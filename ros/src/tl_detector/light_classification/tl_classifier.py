@@ -6,13 +6,16 @@ import numpy as np
 import rospy
 
 class TLClassifier(object):
-    def __init__(self):
+    def __init__(self, is_site):
         #TODO load classifier
         self.light = TrafficLight.UNKNOWN
         self.category_index = {1: {'id': 1, 'name': 'Green'}, 2: {'id': 2, 'name': 'Red'},
                                3: {'id': 3, 'name': 'Yellow'}, 4: {'id': 4, 'name': 'off'}}
         
-        PATH_TO_MODEL = 'frozen_inference_graph_sim_v1.4.pb'
+        if is_site:
+            PATH_TO_MODEL = 'frozen_inference_graph_real_v1.4.pb'
+        else:
+            PATH_TO_MODEL = 'frozen_inference_graph_sim_v1.4.pb'
         self.detection_graph = tf.Graph()
         with self.detection_graph.as_default():
             od_graph_def = tf.GraphDef()
