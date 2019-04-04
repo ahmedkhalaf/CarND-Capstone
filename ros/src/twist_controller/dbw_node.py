@@ -66,7 +66,7 @@ class DBWNode(object):
                                      max_steer_angle = max_steer_angle)
 
         # Subscribe to dbw_enabled, twist and current_velocity topics
-        rospy.Subscriber('/vehicle/dbw_enabled',bool,self.dbw_enabled_cb)
+        rospy.Subscriber('/vehicle/dbw_enabled', Bool,self.dbw_enabled_cb)
         rospy.Subscriber('/twist_cmd'   ,TwistStamped,self.twist_cb)
         rospy.Subscriber('/current_velocity',TwistStamped,self.velocity_cb)
         

@@ -1,3 +1,8 @@
+from lowpass import LowPassFilter
+from yaw_controller import YawController
+from pid import PID
+
+import rospy
 
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
@@ -39,7 +44,7 @@ class Controller(object):
         
         tau = 0.5
         ts = 0.2
-        self.vel_lpf = LawPassFilter(tau, ts)
+        self.vel_lpf = LowPassFilter(tau, ts)
         
         self.last_time = rospy.get_time()
 
@@ -66,7 +71,7 @@ class Controller(object):
         if linear_velocity == 0. and current_velocity < 0.1:
             throttle = 0
             brake = 400
-        elsif throttle < .1 and error_velcoity < 0.:
+        elif throttle < .1 and error_velcoity < 0.:
             throttle = 0
             decel = max(error_velcoity, self.decel_limit)
             brake = abs(decel) * self.vehicle_mass * self.wheel_radius
