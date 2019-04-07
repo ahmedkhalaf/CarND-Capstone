@@ -43,7 +43,7 @@ class Controller(object):
         self.throttle_controller = PID(kp, ki, kd, mn, mx)
         
         tau = 0.5
-        ts = 0.2
+        ts = 0.01
         self.vel_lpf = LowPassFilter(tau, ts)
         
         self.last_time = rospy.get_time()

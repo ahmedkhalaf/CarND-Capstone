@@ -18,6 +18,8 @@ import time
 
 STATE_COUNT_THRESHOLD = 2
 GENERATE_TRAIN_IMGS = False
+DISABLE_CLASSIFIER = True
+CLASSIFIER_ALWAYS_GREEN = True
 
 class TLDetector(object):
     def __init__(self):
@@ -148,11 +150,16 @@ class TLDetector(object):
         Returns:
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
-
-        # Use the block below for testing without classifier
-        #rospy.loginfo('Light state: %s', light.state)
-        #return light.state
-
+        if self.is_simulator:
+            rospy.loginfo("Sim ground truth state: {}".format(
+                self.light_label(light.state)))
+        
+        #Use the block below for testing without classifier
+        if(self.is_simulator and DISABLE_CLASSIFIER):
+            rospy.loginfo('Light state: %s', light.state)
+            if(CLASSIFIER_ALWAYS_GREEN):
+                return TrafficLight.GREEN
+            return light.state
 
         #Only use the block below for real life testing
         if(not self.has_image):
@@ -161,10 +168,6 @@ class TLDetector(object):
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, 'rgb8')
         classified_state = self.light_classifier.get_classification(cv_image)
-
-        if self.is_simulator:
-            rospy.loginfo("Sim ground truth state: {}".format(
-                self.light_label(light.state)))
 
         rospy.loginfo("Classified state:       {}".format(
             self.light_label(classified_state)))
