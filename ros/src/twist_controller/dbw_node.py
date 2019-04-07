@@ -103,7 +103,7 @@ class DBWNode(object):
             
             # Publish if dbw_enabled is true
             if self.dbw_enabled:
-               self.publish(self.throttle, self.brake, self.steering)
+               self.publish(throttle=self.throttle, brake=self.brake, steer=self.steering)
             rate.sleep()
 
     

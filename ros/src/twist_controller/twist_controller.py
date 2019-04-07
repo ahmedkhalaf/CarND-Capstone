@@ -55,7 +55,7 @@ class Controller(object):
             self.throttle_controller.reset()
             return 0., 0., 0.
         
-        current_velocity = self.vel_lpf.flit(current_velocity)
+        current_velocity = self.vel_lpf.filt(current_velocity)
         self.last_velocity = current_velocity
         
         steering = self.yaw_controller.get_steering(linear_velocity, angular_velocity, current_velocity)
