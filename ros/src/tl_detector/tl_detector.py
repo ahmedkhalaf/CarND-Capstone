@@ -18,8 +18,8 @@ import time
 
 STATE_COUNT_THRESHOLD = 2
 GENERATE_TRAIN_IMGS = False
-DISABLE_CLASSIFIER = True
-CLASSIFIER_ALWAYS_GREEN = True
+DISABLE_CLASSIFIER = False
+CLASSIFIER_ALWAYS_GREEN = False
 
 class TLDetector(object):
     def __init__(self):
