@@ -16,13 +16,15 @@ import calendar
 import time
 import numpy as np
 
-STATE_COUNT_THRESHOLD = 2
+# State confirmations count
+STATE_COUNT_THRESHOLD = 1
 # only classify lights within dist_threshold to reduce latency
 # Feel free to remove this
 DIST_THRESHOLD = 100
 GENERATE_TRAIN_IMGS = False
 DISABLE_CLASSIFIER = False
 CLASSIFIER_ALWAYS_GREEN = False
+
 class TLDetector(object):
     def __init__(self):
         rospy.init_node('tl_detector')
@@ -98,15 +100,17 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
         """
         
-        # Only classify every forth image to reduce latency
+        # Skip classifying STATE_COUNT_THRESHOLD images after confirmation
         # Feel free to remove this
-        if self.imageCounter % 4 != 0:
+        #if self.imageCounter % 2 != 0:
+        if (self.state_count > STATE_COUNT_THRESHOLD) and (self.imageCounter <= STATE_COUNT_THRESHOLD):
             self.imageCounter += 1
+            #rospy.loginfo("<---------------- Skipping image_cb() --------------------------->")
             return
         
-        self.imageCounter = 1
+        self.imageCounter = 0
         
-        rospy.loginfo("<---------------- Running image_cb() --------------------------->") #status
+        #rospy.loginfo("<---------------- Running image_cb() --------------------------->") #status
         
         self.has_image = True
         self.camera_image = msg
@@ -139,11 +143,11 @@ class TLDetector(object):
             self.last_wp = light_wp
             self.upcoming_red_light_pub.publish(Int32(light_wp))
             #Debug
-            rospy.loginfo("Publishing incoming red light wp index: {}".format(light_wp))
+            #rospy.loginfo("Red light wp {}".format(light_wp))
         else:
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
             #Debug
-            rospy.loginfo("Publishing incoming red light wp index: {}".format(self.last_wp))
+            #rospy.loginfo("Last wp {}".format(self.last_wp))
         self.state_count += 1
         
 
