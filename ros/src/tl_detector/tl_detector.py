@@ -14,7 +14,7 @@ import yaml
 import os
 import calendar
 import time
-
+import numpy as np
 
 STATE_COUNT_THRESHOLD = 2
 # only classify lights within dist_threshold to reduce latency
@@ -155,8 +155,21 @@ class TLDetector(object):
         Returns:
             int: index of the closest waypoint in self.waypoints
         """
-        #TODO implement
         idx = self.waypoint_tree.query([pose_x, pose_y], 1)[1]
+        # Check if closest is ahead of behind vehicle
+        closest_coord = self.waypoints_2d[idx]
+        prev_coord = self.waypoints_2d[idx-1]
+
+        # Equation for hyperplane through closest_coords
+        cl_vect = np.array(closest_coord)
+        prev_vect = np.array(prev_coord)
+        pos_vect = np.array([pose_x, pose_y])
+
+        val = np.dot(cl_vect-prev_vect, pos_vect-cl_vect)
+
+        if val > 0:
+            idx = (idx + 1) % len(self.waypoints_2d)
+
         return idx
 
     def get_light_state(self, light):
@@ -213,7 +226,7 @@ class TLDetector(object):
         light_wp_idx = None
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
-        if(self.pose):
+        if(self.pose and self.waypoint_tree):
             car_wp_idx = self.get_closest_waypoint(self.pose.pose.position.x, 
                                                          self.pose.pose.position.y)
 
