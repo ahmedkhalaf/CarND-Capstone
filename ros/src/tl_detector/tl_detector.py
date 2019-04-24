@@ -17,10 +17,12 @@ import time
 
 
 STATE_COUNT_THRESHOLD = 2
+# only classify lights within dist_threshold to reduce latency
+# Feel free to remove this
+DIST_THRESHOLD = 100
 GENERATE_TRAIN_IMGS = False
 DISABLE_CLASSIFIER = False
 CLASSIFIER_ALWAYS_GREEN = False
-
 class TLDetector(object):
     def __init__(self):
         rospy.init_node('tl_detector')
@@ -207,9 +209,6 @@ class TLDetector(object):
             int: index of waypoint closes to the upcoming stop line for a traffic light (-1 if none exists)
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
-        # only classify lights within dist_threshold to reduce latency
-        # Feel free to remove this
-        dist_threshold = 100
         closest_light = None
         light_wp_idx = None
         # List of positions that correspond to the line to stop in front of for a given intersection
@@ -224,7 +223,7 @@ class TLDetector(object):
                 line = stop_line_positions[i]
                 cur_line_wp_idx = self.get_closest_waypoint(line[0], line[1])
                 d = cur_line_wp_idx - car_wp_idx
-                if d >= 0 and d < dist_threshold and d < dist:
+                if d >= 0 and d < DIST_THRESHOLD and d < dist:
                     dist = d
                     closest_light = light
                     light_wp_idx = cur_line_wp_idx
