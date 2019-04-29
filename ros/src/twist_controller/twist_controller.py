@@ -31,7 +31,7 @@ class Controller(object):
         self.max_lat_accel = max_lat_accel
         self.max_steer_angle = max_steer_angle
         
-        min_speed = 0.1
+        min_speed = 0.01
         self.yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
         
         kp = 0.3
