@@ -20,10 +20,12 @@ import numpy as np
 STATE_COUNT_THRESHOLD = 1
 # only classify lights within dist_threshold to reduce latency
 # Feel free to remove this
-DIST_THRESHOLD = 100
+DIST_THRESHOLD = 70
 GENERATE_TRAIN_IMGS = False
+GENERATE_DEBUG_IMGS = False
 DISABLE_CLASSIFIER = False
 CLASSIFIER_ALWAYS_GREEN = False
+CLASSIFIER_TIMEOUT_MS = 2000
 
 class TLDetector(object):
     def __init__(self):
@@ -36,11 +38,6 @@ class TLDetector(object):
         self.camera_image = None
         self.lights = []
         self.is_site = None
-        
-        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
-        rospy.Subscriber('/image_color', Image, self.image_cb)
-        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
         
         '''
         /vehicle/traffic_lights provides you with the location of the traffic light in 3D map space and
@@ -66,6 +63,18 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
         self.imageCounter = 1
+        
+        self.num_images_proccessed = 0
+        self.time_running_msec = 0
+        self.time_processed_msec = 0
+        
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/image_color', Image, self.image_cb)
+        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
+        
+        blank_image = np.zeros((600,800,3), np.uint8)
+        warm_classified_state = self.light_classifier.get_classification(blank_image)
 
         rospy.spin()
         
@@ -89,10 +98,20 @@ class TLDetector(object):
         if not os.path.exists(dir):
             os.makedirs(dir)
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image)
-        cv_image = cv_image[:, :, ::-1]
+        #cv_image = self.bridge.imgmsg_to_cv2(self.camera_image)
+        cv_image = self.camera_image[:, :, ::-1]
         cv2.imwrite('{}/{}'.format(dir, f_name), cv_image)
+    def create_debug_data(self, state):
+        f_name = "sim_tl_{}_{}.jpg".format(calendar.timegm(time.gmtime()), self.light_label(state))
+        dir = 'data/debug/sim'
 
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+        #cv_image = self.bridge.imgmsg_to_cv2(self.camera_image)
+        cv_image = self.camera_image[:, :, ::-1]
+        cv2.imwrite('{}/{}'.format(dir, f_name), cv_image)
+        
     def image_cb(self, msg):
         """Identifies red lights in the incoming camera image and publishes the index
             of the waypoint closest to the red light's stop line to /traffic_waypoint
@@ -103,18 +122,21 @@ class TLDetector(object):
         # Skip classifying STATE_COUNT_THRESHOLD images after confirmation
         # Feel free to remove this
         #if self.imageCounter % 2 != 0:
-        if (self.state_count > STATE_COUNT_THRESHOLD) and (self.imageCounter <= STATE_COUNT_THRESHOLD):
-            self.imageCounter += 1
+        start_msec = rospy.Time.from_sec(time.time()).to_nsec() / 1000000
+        if (((start_msec - self.time_processed_msec) < CLASSIFIER_TIMEOUT_MS) and (self.state_count > STATE_COUNT_THRESHOLD)):
             #rospy.loginfo("<---------------- Skipping image_cb() --------------------------->")
             return
-        
-        self.imageCounter = 0
         
         #rospy.loginfo("<---------------- Running image_cb() --------------------------->") #status
         
         self.has_image = True
-        self.camera_image = msg
-
+        
+        try:
+            self.camera_image = self.bridge.imgmsg_to_cv2(msg, 'rgb8')
+        except CvBridgeError as e:
+            rospy.loginfo("CvBridgeError error")
+            rospy.loginfo(e)
+        start_msec = rospy.Time.from_sec(time.time()).to_nsec() / 1000000
         light_wp, state = self.process_traffic_lights()
         
         # Testing with rosbag
@@ -132,9 +154,10 @@ class TLDetector(object):
         if self.state != state:
             self.state_count = 0
             self.state = state
+            rospy.loginfo("Transition to state {}".format(self.light_label(self.state)))
         elif self.state_count >= STATE_COUNT_THRESHOLD:
             self.last_state = self.state
-
+            
             if GENERATE_TRAIN_IMGS:
                 # Store images and state for training data for simulator
                 self.create_training_data(state)
@@ -149,8 +172,15 @@ class TLDetector(object):
             #Debug
             #rospy.loginfo("Last wp {}".format(self.last_wp))
         self.state_count += 1
+        if(state != TrafficLight.UNKNOWN):
+            self.time_processed_msec = start_msec
+            end_msec = rospy.Time.from_sec(time.time()).to_nsec() / 1000000
+            self.time_running_msec += (end_msec - start_msec)
+            self.num_images_proccessed +=1
+            if((end_msec - start_msec) > 250):
+                rospy.loginfo("Classified {} imgs @ {:d} took > 250 actual {}ms".format(self.num_images_proccessed,self.time_running_msec/self.num_images_proccessed,(end_msec - start_msec)))
+        return
         
-
     def get_closest_waypoint(self, pose_x, pose_y):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
@@ -184,13 +214,10 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        if self.is_simulator:
-            rospy.loginfo("Sim ground truth state: {}".format(
-                self.light_label(light.state)))
         
         #Use the block below for testing without classifier
         if(self.is_simulator and DISABLE_CLASSIFIER):
-            rospy.loginfo('Light state: %s', light.state)
+            #rospy.loginfo('Light state: %s', light.state)
             if(CLASSIFIER_ALWAYS_GREEN):
                 return TrafficLight.GREEN
             return light.state
@@ -199,14 +226,16 @@ class TLDetector(object):
         if(not self.has_image):
             self.prev_light_loc = None
             return False
-
-
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, 'rgb8')
-        classified_state = self.light_classifier.get_classification(cv_image)
-
-        rospy.loginfo("Classified state:       {}".format(
-            self.light_label(classified_state)))
-
+        
+        classified_state = self.light_classifier.get_classification(self.camera_image)
+        
+        if (self.is_simulator and (classified_state!=light.state)):
+            if GENERATE_DEBUG_IMGS:
+                # Store images and state for training data for simulator
+                self.create_debug_data(light.state)
+            rospy.loginfo("Sim ground truth state: {} while classified state: {}".format(
+                self.light_label(light.state), self.light_label(classified_state)))
+        
         return classified_state
 
     def light_label(self, state):
@@ -247,14 +276,6 @@ class TLDetector(object):
                 
         if closest_light:
             state = self.get_light_state(closest_light)
-            if state == TrafficLight.RED:
-                rospy.loginfo('Light: RED')
-            elif state == TrafficLight.GREEN:
-                rospy.loginfo('Light: GREEN')
-            elif state == TrafficLight.YELLOW:
-                rospy.loginfo('Light: YELLOW')
-            elif state == TrafficLight.UNKNOWN:
-                rospy.loginfo('Light UNKNOWN')
             return light_wp_idx, state
         #self.waypoints = None
         

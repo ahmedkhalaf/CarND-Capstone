@@ -11,7 +11,10 @@ class TLClassifier(object):
         self.light = TrafficLight.UNKNOWN
         self.category_index = {1: {'id': 1, 'name': 'Green'}, 2: {'id': 2, 'name': 'Red'},
                                3: {'id': 3, 'name': 'Yellow'}, 4: {'id': 4, 'name': 'off'}}
-        
+        optimizer_options = tf.OptimizerOptions(opt_level=tf.OptimizerOptions.L1,do_function_inlining=True)
+        graph_options = tf.GraphOptions(optimizer_options=optimizer_options)
+        config=tf.ConfigProto(log_device_placement=True,graph_options=graph_options)
+        config.gpu_options.allow_growth = True
         if is_site:
             PATH_TO_MODEL = 'frozen_inference_graph_real_v1.4.pb'
         else:
@@ -62,13 +65,13 @@ class TLClassifier(object):
             if class_name == 'Red':
                 count_red += 1
         
-        s = 'UNKNOWN'
+        #s = 'UNKNOWN'
         if count_red < count_total - count_red:
             self.light = TrafficLight.GREEN
-            s = 'GREEN'
+            #s = 'GREEN'
         else:
             self.light = TrafficLight.RED
-            s = 'RED'
+            #s = 'RED'
 
-        rospy.loginfo('Light: %s', s)
+        #rospy.loginfo('Light: %s', s)
         return self.light
