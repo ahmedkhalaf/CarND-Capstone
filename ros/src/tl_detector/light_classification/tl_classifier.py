@@ -53,18 +53,18 @@ class TLClassifier(object):
         classes = np.squeeze(classes).astype(np.int32)
         num = np.squeeze(num).astype(np.int32)
         #rospy.loginfo('get_classification: %s, %s, %s, %s', boxes, scores, classes, num)
-        
+
         min_threshold = 0.5
         count_total = 0
         count_red = count_green = count_yellow = 0
         for i in range(boxes.shape[0]):
             if scores is None or scores[i] > min_threshold:
                 count_total += 1
-               
-            class_name = self.category_index[classes[i]]['name']
-            if class_name == 'Red':
-                count_red += 1
-        
+
+                class_name = self.category_index[classes[i]]['name']
+                if class_name == 'Red':
+                    count_red += 1
+
         #s = 'UNKNOWN'
         if count_red < count_total - count_red:
             self.light = TrafficLight.GREEN
