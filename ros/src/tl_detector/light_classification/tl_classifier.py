@@ -41,12 +41,11 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
         #TODO implement light color prediction
-        with self.detection_graph.as_default():
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image_expanded = np.expand_dims(image_rgb, axis = 0)
-            (boxes, scores, classes, num) = self.sess.run(
-                [self.d_boxes, self.d_scores, self.d_classes, self.num_d],
-                feed_dict = {self.image_tensor: image_expanded})
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_expanded = np.expand_dims(image_rgb, axis = 0)
+        (boxes, scores, classes, num) = self.sess.run(
+            [self.d_boxes, self.d_scores, self.d_classes, self.num_d],
+            feed_dict = {self.image_tensor: image_expanded})
         #return TrafficLight.RED
         boxes = np.squeeze(boxes)
         scores = np.squeeze(scores)
@@ -54,16 +53,16 @@ class TLClassifier(object):
         num = np.squeeze(num).astype(np.int32)
         #rospy.loginfo('get_classification: %s, %s, %s, %s', boxes, scores, classes, num)
 
-        min_threshold = 0.5
+        min_threshold = 0.3
         count_total = 0
         count_red = count_green = count_yellow = 0
         for i in range(boxes.shape[0]):
             if scores is None or scores[i] > min_threshold:
                 count_total += 1
 
-            class_name = self.category_index[classes[i]]['name']
-            if class_name == 'RED':
-                count_red += 1
+                class_name = self.category_index[classes[i]]['name']
+                if class_name == 'RED':
+                    count_red += 1
 
         #s = 'UNKNOWN'
         if count_red < count_total - count_red:
