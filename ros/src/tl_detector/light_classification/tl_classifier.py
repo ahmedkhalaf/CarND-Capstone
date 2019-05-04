@@ -9,16 +9,16 @@ class TLClassifier(object):
     def __init__(self, is_site):
         #TODO load classifier
         self.light = TrafficLight.UNKNOWN
-        self.category_index = {1: {'id': 1, 'name': 'Green'}, 2: {'id': 2, 'name': 'Red'},
-                               3: {'id': 3, 'name': 'Yellow'}, 4: {'id': 4, 'name': 'off'}}
+        self.category_index = {1: {'id': 1, 'name': 'GREEN'}, 2: {'id': 2, 'name': 'RED'},
+                               3: {'id': 3, 'name': 'YELLOW'}, 4: {'id': 4, 'name': 'UNKNOWN'}}
         optimizer_options = tf.OptimizerOptions(opt_level=tf.OptimizerOptions.L1,do_function_inlining=True)
         graph_options = tf.GraphOptions(optimizer_options=optimizer_options)
         config=tf.ConfigProto(log_device_placement=True,graph_options=graph_options)
         config.gpu_options.allow_growth = True
         if is_site:
-            PATH_TO_MODEL = 'frozen_inference_graph_real_v1.4.pb'
+            PATH_TO_MODEL = 'ssd_inception_v2_carla/frozen_inference_graph.pb'
         else:
-            PATH_TO_MODEL = 'frozen_inference_graph_sim_v1.4.pb'
+            PATH_TO_MODEL = 'ssd_inception_v2_sim/frozen_inference_graph.pb'
         self.detection_graph = tf.Graph()
         with self.detection_graph.as_default():
             od_graph_def = tf.GraphDef()
@@ -53,18 +53,18 @@ class TLClassifier(object):
         classes = np.squeeze(classes).astype(np.int32)
         num = np.squeeze(num).astype(np.int32)
         #rospy.loginfo('get_classification: %s, %s, %s, %s', boxes, scores, classes, num)
-        
+
         min_threshold = 0.5
         count_total = 0
         count_red = count_green = count_yellow = 0
         for i in range(boxes.shape[0]):
             if scores is None or scores[i] > min_threshold:
                 count_total += 1
-               
+
             class_name = self.category_index[classes[i]]['name']
-            if class_name == 'Red':
+            if class_name == 'RED':
                 count_red += 1
-        
+
         #s = 'UNKNOWN'
         if count_red < count_total - count_red:
             self.light = TrafficLight.GREEN
